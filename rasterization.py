@@ -15,31 +15,6 @@ import json
 import numpy as np
 from PIL import Image
 
-def inside(x, y, primitive):
-    """
-    Check if point (x,y) is inside the primitive
-
-    Args:
-        x (float): horizontal point position
-        y (float): vertical point position
-        primitive (dict): primitive shape
-    Returns:
-        True if (x,y) is inside the primitive, False case contrary
-    """
-
-    # You should implement your inside test here for all shapes
-    # for now, it only returns a false test
-
-    if primitive["shape"] == "circle":
-        dist_sqr = ((primitive["center"][0] - x) ** 2 +
-                    (primitive["center"][1] - y) ** 2)
-
-        return dist_sqr <= primitive["radius"] ** 2
-    else:
-
-
-    return False
-
 def bounding_box(primitive):
     """ Creates a bounding box for a given circle ou convex polygon
 
@@ -66,10 +41,66 @@ def bounding_box(primitive):
     primitive["bounding_box"] = bbox
     return primitive
 
+def winding_number(x, y, primitive):
+    """ Winding number function
+    Checks if (x, y) is inside primitive using the winding number algorithm.
+
+    Args:
+        x (float): horizontal point position
+        y (float): vertical point position
+        primitive (dict): primitive shape (polygon)
+    Returns:
+        True if (x,y) is inside the primitive, False case contrary
+    """
+
+    wn = 0
+
+    edges = zip(primitive["vertices"][-1:] + primitive["vertices"][:-1],
+                primitive["vertices"])
+    for edge in edges:
+        # check if cuts y parallel line at (x, y) &&
+        if (edge[0][0] > x) != (edge[1][0] > x):
+            # check what side of the edge is (x, y)
+            # side > 0 => point is to de left of the edge
+            # side = 0 => point is on the edge
+            # side < 0 => point is to de right of the edge
+            side = ((y - edge[0][1]) * (edge[1][0] - edge[0][0]) -
+                    (x - edge[0][0]) * (edge[1][1] - edge[0][1]))
+            # if to the left, increase wn
+            if side > 0: wn += 1
+            # if to the right, decrease wn
+            else: wn -= 1
+
+    if wn != 0: return True
+    return False
+
+def inside(x, y, primitive):
+    """
+    Check if point (x,y) is inside the primitive
+
+    Args:
+        x (float): horizontal point position
+        y (float): vertical point position
+        primitive (dict): primitive shape
+    Returns:
+        True if (x,y) is inside the primitive, False case contrary
+    """
+
+    # You should implement your inside test here for all shapes
+    # for now, it only returns a false test
+
+    if primitive["shape"] == "circle":
+        dist_sqr = ((primitive["center"][0] - x) ** 2 +
+                    (primitive["center"][1] - y) ** 2)
+
+        return dist_sqr <= primitive["radius"] ** 2
+    else:
+        return winding_number(x, y, primitive)
+
+    return False
 
 class Screen:
     """ Creates a virtual basic screen
-
 
     Args:
         gdata (dict): dictionary containing screen size and scene description
@@ -83,7 +114,8 @@ class Screen:
 
 
     def preprocess(self, scene):
-        """ ?????????????
+        """
+        Applies affine transformation on primitives, if given, and adds bounding boxes
 
         Args:
             scene (dict): Scene containing the graphic primitives
@@ -115,9 +147,7 @@ class Screen:
         """
 
         for primitive in self._scene:
-            print(primitive)
             bbox = primitive["bounding_box"]
-            print(bbox)
             # Loop through all pixels
             # You MUST use bounding boxes in order to speed up this loop
             for w in range(bbox[0][0], bbox[1][0]):
@@ -127,10 +157,13 @@ class Screen:
                     # First, we check if the pixel center is inside the primitive
                     im_x, im_y = w, self._height - (h + 1)
                     if inside(x, y, primitive):
-                        self._image[im_y, im_x] = primitive["color"][::-1]
-                    else:
-                        self._image[im_y, im_x] = [100, 0, 0]
+                        # apply affine xfrom if needed
+                        if "xform" in primitive.keys():
+                            result = np.matmul(primitive["xform"],
+                                               [[im_x], [im_y], [1]])
+                            im_x, im_y = int(result[0][0]), int(result[1][0])
 
+                        self._image[im_y, im_x] = primitive["color"][::-1]
 
     def show(self, exec_rasterize = False):
         """ Show the virtual Screen
