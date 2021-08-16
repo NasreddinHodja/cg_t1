@@ -2,6 +2,10 @@
 
 """ Rasterization
 
+Takes in a scene description with primitives, that can
+have an xform associated with, and rasterizes it to an
+image that is then shown using PIL Image.show().
+
 Usage:
     ./rasterization.py [shape]
 
