@@ -167,7 +167,10 @@ class Screen:
                                                [[im_x], [im_y], [1]])
                             im_x, im_y = int(result[0][0]), int(result[1][0])
 
-                        self._image[im_y, im_x] = primitive["color"][::-1]
+                        self._image[im_y, im_x] = primitive["color"]
+                #         break
+                #     break
+                # break
 
     def show(self, exec_rasterize = False):
         """ Show the virtual Screen
